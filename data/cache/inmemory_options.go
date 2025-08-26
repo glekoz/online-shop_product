@@ -9,7 +9,7 @@ type options struct {
 	step      time.Duration
 	queueSize int
 
-	threshold int32 // именно int32 чтобы использовать атомики
+	//threshold int32 // именно int32 чтобы использовать атомики
 }
 
 type Option func(options *options) error
@@ -34,16 +34,17 @@ func WithQueueSize(size int) Option {
 	}
 }
 
-func WithThreshold(threshold int) Option {
-	return func(options *options) error {
-		if threshold < 0 {
-			return errors.New("threshold must be positive")
+/*
+	func WithThreshold(threshold int) Option {
+		return func(options *options) error {
+			if threshold < 0 {
+				return errors.New("threshold must be positive")
+			}
+			options.threshold = int32(threshold)
+			return nil
 		}
-		options.threshold = int32(threshold)
-		return nil
 	}
-}
-
+*/
 func NewInMemoryCache[K comparable, V any](opts ...Option) (*inMemoryCache[K, V], error) {
 	var options options
 	for _, opt := range opts {
@@ -59,14 +60,14 @@ func NewInMemoryCache[K comparable, V any](opts ...Option) (*inMemoryCache[K, V]
 	if options.queueSize == 0 {
 		options.queueSize = 5
 	}
-	if options.threshold == 0 {
-		options.threshold = 1024
-	}
+	//if options.threshold == 0 {
+	//	options.threshold = 1024
+	//}
 
 	return &inMemoryCache[K, V]{
-		cache:     make(map[K]V),
-		queue:     make(map[time.Time][]K),
-		step:      options.step,
-		threshold: options.threshold,
+		cache: make(map[K]V),
+		queue: make(map[time.Time][]K),
+		step:  options.step,
+		//threshold: options.threshold,
 	}, nil
 }
