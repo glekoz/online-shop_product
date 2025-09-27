@@ -5,7 +5,8 @@ CREATE TABLE products (
     name VARCHAR(100) NOT NULL,
     price INTEGER NOT NULL,
     description VARCHAR(512) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 -- +goose StatementEnd
 

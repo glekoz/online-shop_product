@@ -39,12 +39,12 @@ func New(dsn string) (*Repository, error) {
 	}, nil
 }
 
-func (r *Repository) Create(ctx context.Context, args models.ProductCreation) error {
+func (r *Repository) Create(ctx context.Context, id string, prod models.Product) error {
 	err := r.q.Create(ctx, db.CreateParams{
-		ID:          args.ID,
-		Name:        args.Name,
-		Price:       int32(args.Price),
-		Description: args.Description},
+		ID:          id,
+		Name:        prod.Name,
+		Price:       int32(prod.Price),
+		Description: prod.Description},
 	)
 	if err != nil {
 		var errp *pgconn.PgError
@@ -55,10 +55,10 @@ func (r *Repository) Create(ctx context.Context, args models.ProductCreation) er
 		}
 		return err
 	}
-	r.cache.Add(args.ID, models.Product{
-		Name:        args.Name,
-		Price:       int(args.Price),
-		Description: args.Description,
+	r.cache.Add(id, models.Product{
+		Name:        prod.Name,
+		Price:       prod.Price,
+		Description: prod.Description,
 	}, 30*time.Second)
 	return nil
 }
@@ -109,20 +109,16 @@ func (r *Repository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *Repository) Update(ctx context.Context, id string, args models.Product) error {
+func (r *Repository) Update(ctx context.Context, id string, prod models.Product) error {
 	err := r.q.Update(ctx, db.UpdateParams{
 		ID:          id,
-		Name:        args.Name,
-		Price:       int32(args.Price),
-		Description: args.Description,
+		Name:        prod.Name,
+		Price:       int32(prod.Price),
+		Description: prod.Description,
 	})
 	if err != nil {
 		return err
 	}
-	r.cache.Add(id, models.Product{
-		Name:        args.Name,
-		Price:       args.Price,
-		Description: args.Description,
-	}, 30*time.Second)
+	r.cache.Add(id, prod, 30*time.Second)
 	return nil
 }
