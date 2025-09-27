@@ -2,7 +2,11 @@ module github.com/glekoz/online-shop_product
 
 go 1.24.2
 
-require github.com/jackc/pgx/v5 v5.7.6
+require (
+	github.com/glekoz/cache v1.0.0
+	github.com/google/uuid v1.6.0
+	github.com/jackc/pgx/v5 v5.7.6
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect

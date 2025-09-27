@@ -4,9 +4,14 @@
 
 package db
 
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
 type Product struct {
 	ID          string
 	Name        string
 	Price       int32
 	Description string
+	CreatedAt   pgtype.Timestamp
 }

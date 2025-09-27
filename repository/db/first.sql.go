@@ -36,6 +36,17 @@ func (q *Queries) Create(ctx context.Context, arg CreateParams) error {
 	return err
 }
 
+const delete = `-- name: Delete :exec
+DELETE
+FROM products
+WHERE id = $1
+`
+
+func (q *Queries) Delete(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, delete, id)
+	return err
+}
+
 const get = `-- name: Get :one
 SELECT name, price, description
 FROM products
@@ -84,4 +95,71 @@ func (q *Queries) GetAll(ctx context.Context) ([]GetAllRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const orderedOffsetGetAll = `-- name: OrderedOffsetGetAll :many
+SELECT id, name, price
+FROM products
+ORDER BY $1
+LIMIT $2
+OFFSET $3
+`
+
+type OrderedOffsetGetAllParams struct {
+	Column1 interface{}
+	Limit   int32
+	Offset  int32
+}
+
+type OrderedOffsetGetAllRow struct {
+	ID    string
+	Name  string
+	Price int32
+}
+
+func (q *Queries) OrderedOffsetGetAll(ctx context.Context, arg OrderedOffsetGetAllParams) ([]OrderedOffsetGetAllRow, error) {
+	rows, err := q.db.Query(ctx, orderedOffsetGetAll, arg.Column1, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OrderedOffsetGetAllRow
+	for rows.Next() {
+		var i OrderedOffsetGetAllRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Price); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const update = `-- name: Update :exec
+
+UPDATE products
+SET name = $2, price = $3, description = $4
+WHERE id = $1
+`
+
+type UpdateParams struct {
+	ID          string
+	Name        string
+	Price       int32
+	Description string
+}
+
+// тут сначала будет Гет, потом из переданных в функцию
+// аргументов выбираются ненулевые и заменяются в структуре из Гет
+// и отправляются в БД
+func (q *Queries) Update(ctx context.Context, arg UpdateParams) error {
+	_, err := q.db.Exec(ctx, update,
+		arg.ID,
+		arg.Name,
+		arg.Price,
+		arg.Description,
+	)
+	return err
 }

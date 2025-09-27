@@ -15,3 +15,24 @@ WHERE id = $1;
 -- name: GetAll :many
 SELECT id, name, price
 FROM products;
+
+-- name: Delete :exec
+DELETE
+FROM products
+WHERE id = $1;
+
+-- тут сначала будет Гет, потом из переданных в функцию 
+-- аргументов выбираются ненулевые и заменяются в структуре из Гет
+-- и отправляются в БД
+
+-- name: Update :exec
+UPDATE products
+SET name = $2, price = $3, description = $4
+WHERE id = $1;
+
+-- name: OrderedOffsetGetAll :many
+SELECT id, name, price, description
+FROM products
+ORDER BY $1
+LIMIT $2
+OFFSET $3;

@@ -3,46 +3,85 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
-	"github.com/glekoz/online-shop_product/models"
+	"github.com/glekoz/cache"
+	"github.com/glekoz/online-shop_product/pkg/models"
 	"github.com/glekoz/online-shop_product/repository/db"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Если бы кэш был сложнее, мне следовало бы вынести его в отдельный пакет
+// Но в моем случае кэш очень "тонкий", поэтому сделал паттерн Декоратор
+
 type Repository struct {
-	q    *db.Queries
-	pool *pgxpool.Pool
+	q     *db.Queries
+	pool  *pgxpool.Pool
+	cache *cache.Cache[string, models.Product]
 }
 
 func New(dsn string) (*Repository, error) {
+	c, err := cache.New[string, models.Product]()
+	if err != nil {
+		return nil, err
+	}
 	p, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		return nil, err
 	}
 	q := db.New(p)
 	return &Repository{
-		q:    q,
-		pool: p,
+		q:     q,
+		pool:  p,
+		cache: c,
 	}, nil
 }
 
-func (r *Repository) Create(ctx context.Context, args db.CreateParams) error {
-	return r.q.Create(ctx, args)
+func (r *Repository) Create(ctx context.Context, args models.ProductCreation) error {
+	err := r.q.Create(ctx, db.CreateParams{
+		ID:          args.ID,
+		Name:        args.Name,
+		Price:       int32(args.Price),
+		Description: args.Description},
+	)
+	if err != nil {
+		var errp *pgconn.PgError
+		if errors.As(err, &errp) {
+			if errp.Code == models.UniqueErrCode {
+				return models.ErrUniqueViolation
+			}
+		}
+		return err
+	}
+	r.cache.Add(args.ID, models.Product{
+		Name:        args.Name,
+		Price:       int(args.Price),
+		Description: args.Description,
+	}, 30*time.Second)
+	return nil
 }
 
-func (r *Repository) Get(ctx context.Context, id string) (db.GetRow, error) {
+func (r *Repository) Get(ctx context.Context, id string) (models.Product, error) {
+	if res, ok := r.cache.Get(id); ok {
+		return res, nil
+	}
 	res, err := r.q.Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return db.GetRow{}, models.ErrNotFound
+			return models.Product{}, models.ErrNotFound
 		}
-		return db.GetRow{}, err
+		return models.Product{}, err
 	}
-	return res, nil
+	return models.Product{
+		Name:        res.Name,
+		Price:       int(res.Price),
+		Description: res.Description,
+	}, nil
 }
 
-func (r *Repository) GetAll(ctx context.Context) ([]db.GetAllRow, error) {
+func (r *Repository) GetAll(ctx context.Context) ([]models.ProductDigest, error) {
 	ress, err := r.q.GetAll(ctx)
 	if err != nil {
 		return nil, err
@@ -50,5 +89,40 @@ func (r *Repository) GetAll(ctx context.Context) ([]db.GetAllRow, error) {
 	if len(ress) == 0 {
 		return nil, models.ErrNotFound
 	}
-	return ress, nil
+	var result = make([]models.ProductDigest, len(ress))
+	for i, res := range ress {
+		result[i] = models.ProductDigest{
+			ID:    res.ID,
+			Name:  res.Name,
+			Price: int(res.Price),
+		}
+	}
+	return result, nil
+}
+
+func (r *Repository) Delete(ctx context.Context, id string) error {
+	err := r.q.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	r.cache.Delete(id)
+	return nil
+}
+
+func (r *Repository) Update(ctx context.Context, id string, args models.Product) error {
+	err := r.q.Update(ctx, db.UpdateParams{
+		ID:          id,
+		Name:        args.Name,
+		Price:       int32(args.Price),
+		Description: args.Description,
+	})
+	if err != nil {
+		return err
+	}
+	r.cache.Add(id, models.Product{
+		Name:        args.Name,
+		Price:       args.Price,
+		Description: args.Description,
+	}, 30*time.Second)
+	return nil
 }
