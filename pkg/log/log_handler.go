@@ -16,9 +16,10 @@ type MyJSONLogHandler struct {
 }
 
 type LogData struct {
-	UserID    string
-	Service   string
-	ProductID string
+	UserID      string
+	Service     string
+	ProductID   string
+	ProductName string
 }
 
 func NewMyJSONLogHandler(h slog.Handler) *MyJSONLogHandler {
@@ -38,10 +39,13 @@ func (h *MyJSONLogHandler) Handle(ctx context.Context, rec slog.Record) error {
 			rec.Add("user_id", ld.UserID)
 		}
 		if ld.Service != "" {
-			rec.Add("phone", ld.Service)
+			rec.Add("service", ld.Service)
 		}
 		if ld.ProductID != "" {
-			rec.Add("message", ld.ProductID)
+			rec.Add("product_id", ld.ProductID)
+		}
+		if ld.ProductName != "" {
+			rec.Add("product_name", ld.ProductName)
 		}
 	}
 	return h.handler.Handle(ctx, rec)
@@ -80,4 +84,12 @@ func WithProductID(ctx context.Context, productID string) context.Context {
 		return context.WithValue(ctx, LogDataKey, ld)
 	}
 	return context.WithValue(ctx, LogDataKey, LogData{ProductID: productID})
+}
+
+func WithProductName(ctx context.Context, productName string) context.Context {
+	if ld, ok := ctx.Value(LogDataKey).(LogData); ok {
+		ld.ProductName = productName
+		return context.WithValue(ctx, LogDataKey, ld)
+	}
+	return context.WithValue(ctx, LogDataKey, LogData{ProductName: productName})
 }

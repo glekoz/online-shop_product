@@ -50,7 +50,7 @@ func (r *Repository) Create(ctx context.Context, id string, prod models.Product)
 		var errp *pgconn.PgError
 		if errors.As(err, &errp) {
 			if errp.Code == models.UniqueErrCode {
-				return models.ErrUniqueViolation
+				return models.ErrAlreadyExists
 			}
 		}
 		return err

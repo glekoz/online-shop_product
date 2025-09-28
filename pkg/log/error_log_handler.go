@@ -11,6 +11,7 @@ type ErrorLogData struct {
 }
 
 // а нужен ли мне тут указатель? придется хранить результат функции в куче
+// состояние не изменяется к тому же
 // func (e *ErrorLogData) Error() string {
 func (e ErrorLogData) Error() string {
 	return e.Err.Error()
