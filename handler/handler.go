@@ -109,6 +109,15 @@ func (s *ProductService) Delete(ctx context.Context, req *product.ID) (*emptypb.
 func (s *ProductService) Update(ctx context.Context, req *product.UpdateRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	prod := req.GetProduct()
+
+	// позже эту валидацию нужно будет вынести в шлюз
+	if prod.Name == "" || prod.Price <= 0 || prod.Description == "" {
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			"name, price and description are required, price must be greater than 0",
+		)
+	}
+
 	if err := s.app.Update(ctx, id, models.Product{
 		Name:        prod.Name,
 		Price:       int(prod.Price),
