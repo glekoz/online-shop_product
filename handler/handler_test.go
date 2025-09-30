@@ -109,35 +109,35 @@ func (a *AppMock) Update(ctx context.Context, id string, prod models.Product) er
 func (s *ServerSuite) TestCreate() {
 	tests := []struct {
 		name       string
-		prod       models.Product
+		prod       *product.Product
 		expectedID string
 		errCode    codes.Code
 		errMsg     string
 	}{
 		{
 			name:       "Happy",
-			prod:       models.Product{Name: "Tasty Donut", Price: 1000, Description: "Tasty"},
+			prod:       &product.Product{Name: "Tasty Donut", Price: 1000, Description: "Tasty"},
 			expectedID: "10",
 			errCode:    codes.OK,
 			errMsg:     "",
 		},
 		{
 			name:       "Already Exists",
-			prod:       models.Product{Name: "Donut", Price: 1111, Description: "Tasty"},
+			prod:       &product.Product{Name: "Donut", Price: 1111, Description: "Tasty"},
 			expectedID: "",
 			errCode:    codes.AlreadyExists,
 			errMsg:     "product with the same name already exists: Donut",
 		},
 		{
 			name:       "Internal Error",
-			prod:       models.Product{Name: "Unknown", Price: 88888888, Description: "???"},
+			prod:       &product.Product{Name: "Unknown", Price: 88888888, Description: "???"},
 			expectedID: "",
 			errCode:    codes.Internal,
 			errMsg:     models.ErrInternal.Error(),
 		},
 		{
 			name:       "Invalid Argument",
-			prod:       models.Product{},
+			prod:       &product.Product{},
 			expectedID: "",
 			errCode:    codes.InvalidArgument,
 			errMsg:     "name, price and description are required, price must be greater than 0",
@@ -146,11 +146,75 @@ func (s *ServerSuite) TestCreate() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			request := &product.Product{Name: tt.prod.Name, Price: int32(tt.prod.Price), Description: tt.prod.Description}
-			response, err := s.client.Create(s.ctx, request)
+			response, err := s.client.Create(s.ctx, tt.prod)
 			if response != nil {
 				if response.GetId() != tt.expectedID {
 					t.Error("response: expected: ", tt.expectedID, "received: ", response.GetId())
+				}
+			}
+			if err != nil {
+				if er, ok := status.FromError(err); ok {
+					if er.Code() != tt.errCode {
+						t.Error("error code: expected: ", tt.errCode, "received: ", er.Code())
+					}
+					if er.Message() != tt.errMsg {
+						t.Error("error message: expected: ", tt.errMsg, "received: ", er.Message())
+					}
+				}
+			}
+		})
+	}
+}
+
+func (s *ServerSuite) TestGet() {
+	tests := []struct {
+		name         string
+		id           string
+		expectedProd *product.Product
+		errCode      codes.Code
+		errMsg       string
+	}{
+		{
+			name:         "Happy",
+			id:           "1",
+			expectedProd: &product.Product{Name: "Donut", Price: 1000, Description: "Delicious"},
+			errCode:      codes.OK,
+			errMsg:       "",
+		},
+		{
+			name:         "Invalid Argument",
+			id:           "",
+			expectedProd: &product.Product{},
+			errCode:      codes.InvalidArgument,
+			errMsg:       "id is required",
+		},
+		{
+			name:         "Not Found",
+			id:           "404",
+			expectedProd: &product.Product{},
+			errCode:      codes.NotFound,
+			errMsg:       "404 not found",
+		},
+		{
+			name:         "Internal",
+			id:           "500",
+			expectedProd: &product.Product{},
+			errCode:      codes.Internal,
+			errMsg:       models.ErrInternal.Error(),
+		},
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			response, err := s.client.Get(s.ctx, &product.ID{Id: tt.id})
+			if response != nil {
+				if response.GetName() != tt.expectedProd.Name {
+					t.Error("response: expected: ", tt.expectedProd.Name, "received: ", response.GetName())
+				}
+				if response.GetPrice() != tt.expectedProd.Price {
+					t.Error("response: expected: ", tt.expectedProd.Price, "received: ", response.GetPrice())
+				}
+				if response.GetDescription() != tt.expectedProd.Description {
+					t.Error("response: expected: ", tt.expectedProd.Description, "received: ", response.GetDescription())
 				}
 			}
 			if err != nil {

@@ -65,6 +65,9 @@ func (s *ProductService) Create(ctx context.Context, req *product.Product) (*pro
 
 func (s *ProductService) Get(ctx context.Context, req *product.ID) (*product.Product, error) {
 	id := req.GetId()
+	if id == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "id is required")
+	}
 	p, err := s.app.Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, models.ErrNotFound) {
