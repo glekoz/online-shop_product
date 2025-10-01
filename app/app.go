@@ -55,18 +55,18 @@ func (a *App) Delete(ctx context.Context, id string) error {
 
 // хотя нужно сделать проверку ещё в шлюзе, чтобы пустых полей в запросе (форме) не было
 func (a *App) Update(ctx context.Context, id string, prod models.Product) error {
-	pr, err := a.r.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-	if prod.Name != "" {
-		pr.Name = prod.Name
-	}
-	if prod.Price != 0 {
-		pr.Price = prod.Price
-	}
-	if prod.Description != "" {
-		pr.Description = prod.Description
-	}
-	return a.r.Update(ctx, id, pr)
+	// pr, err := a.r.Get(ctx, id)
+	// if err != nil {
+	// 	return err
+	// }
+	// if prod.Name != "" {
+	// 	pr.Name = prod.Name
+	// }
+	// if prod.Price != 0 {
+	// 	pr.Price = prod.Price
+	// }
+	// if prod.Description != "" {
+	// 	pr.Description = prod.Description
+	// }
+	return a.r.Update(ctx, id, prod)
 }

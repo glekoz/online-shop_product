@@ -104,9 +104,12 @@ func (s *ProductService) GetAll(ctx context.Context, _ *emptypb.Empty) (*product
 func (s *ProductService) Delete(ctx context.Context, req *product.ID) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if err := s.app.Delete(ctx, id); err != nil {
-		return &emptypb.Empty{}, status.Error(codes.Internal, err.Error())
+		if errors.Is(err, models.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return &emptypb.Empty{}, nil
+	return nil, nil
 }
 
 func (s *ProductService) Update(ctx context.Context, req *product.UpdateRequest) (*emptypb.Empty, error) {
@@ -126,7 +129,10 @@ func (s *ProductService) Update(ctx context.Context, req *product.UpdateRequest)
 		Price:       int(prod.Price),
 		Description: prod.Description,
 	}); err != nil {
-		return &emptypb.Empty{}, status.Error(codes.Internal, err.Error())
+		if errors.Is(err, models.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return &emptypb.Empty{}, nil
+	return nil, nil
 }

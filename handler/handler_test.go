@@ -106,6 +106,10 @@ func (a *AppMock) Update(ctx context.Context, id string, prod models.Product) er
 	return nil
 }
 
+// ----------------------------------------------------------------
+// 							TEST SECTION
+// ----------------------------------------------------------------
+
 func (s *ServerSuite) TestCreate() {
 	tests := []struct {
 		name       string
@@ -148,18 +152,12 @@ func (s *ServerSuite) TestCreate() {
 		s.T().Run(tt.name, func(t *testing.T) {
 			response, err := s.client.Create(s.ctx, tt.prod)
 			if response != nil {
-				if response.GetId() != tt.expectedID {
-					t.Error("response: expected: ", tt.expectedID, "received: ", response.GetId())
-				}
+				s.Assert().Equal(response.GetId(), tt.expectedID)
 			}
 			if err != nil {
 				if er, ok := status.FromError(err); ok {
-					if er.Code() != tt.errCode {
-						t.Error("error code: expected: ", tt.errCode, "received: ", er.Code())
-					}
-					if er.Message() != tt.errMsg {
-						t.Error("error message: expected: ", tt.errMsg, "received: ", er.Message())
-					}
+					s.Assert().Equal(er.Code(), tt.errCode)
+					s.Assert().Equal(er.Message(), tt.errMsg)
 				}
 			}
 		})
@@ -168,65 +166,197 @@ func (s *ServerSuite) TestCreate() {
 
 func (s *ServerSuite) TestGet() {
 	tests := []struct {
-		name         string
-		id           string
-		expectedProd *product.Product
-		errCode      codes.Code
-		errMsg       string
+		name                string
+		id                  string
+		expectedName        string
+		expectedPrice       int32
+		expectedDescription string
+		errCode             codes.Code
+		errMsg              string
 	}{
 		{
-			name:         "Happy",
-			id:           "1",
-			expectedProd: &product.Product{Name: "Donut", Price: 1000, Description: "Delicious"},
-			errCode:      codes.OK,
-			errMsg:       "",
+			name:                "Happy",
+			id:                  "1",
+			expectedName:        "Donut",
+			expectedPrice:       1000,
+			expectedDescription: "Delicious",
+			errCode:             codes.OK,
+			errMsg:              "",
 		},
 		{
-			name:         "Invalid Argument",
-			id:           "",
-			expectedProd: &product.Product{},
-			errCode:      codes.InvalidArgument,
-			errMsg:       "id is required",
+			name:                "Invalid Argument",
+			id:                  "",
+			expectedName:        "",
+			expectedPrice:       0,
+			expectedDescription: "",
+			errCode:             codes.InvalidArgument,
+			errMsg:              "id is required",
 		},
 		{
-			name:         "Not Found",
-			id:           "404",
-			expectedProd: &product.Product{},
-			errCode:      codes.NotFound,
-			errMsg:       "404 not found",
+			name:                "Not Found",
+			id:                  "404",
+			expectedName:        "",
+			expectedPrice:       0,
+			expectedDescription: "",
+			errCode:             codes.NotFound,
+			errMsg:              "404 not found",
 		},
 		{
-			name:         "Internal",
-			id:           "500",
-			expectedProd: &product.Product{},
-			errCode:      codes.Internal,
-			errMsg:       models.ErrInternal.Error(),
+			name:                "Internal",
+			id:                  "500",
+			expectedName:        "",
+			expectedPrice:       0,
+			expectedDescription: "",
+			errCode:             codes.Internal,
+			errMsg:              models.ErrInternal.Error(),
 		},
 	}
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			response, err := s.client.Get(s.ctx, &product.ID{Id: tt.id})
 			if response != nil {
-				if response.GetName() != tt.expectedProd.Name {
-					t.Error("response: expected: ", tt.expectedProd.Name, "received: ", response.GetName())
-				}
-				if response.GetPrice() != tt.expectedProd.Price {
-					t.Error("response: expected: ", tt.expectedProd.Price, "received: ", response.GetPrice())
-				}
-				if response.GetDescription() != tt.expectedProd.Description {
-					t.Error("response: expected: ", tt.expectedProd.Description, "received: ", response.GetDescription())
-				}
+				s.Assert().Equal(response.GetName(), tt.expectedName)
+				s.Assert().Equal(response.GetPrice(), tt.expectedPrice)
+				s.Assert().Equal(response.GetDescription(), tt.expectedDescription)
 			}
 			if err != nil {
 				if er, ok := status.FromError(err); ok {
-					if er.Code() != tt.errCode {
-						t.Error("error code: expected: ", tt.errCode, "received: ", er.Code())
-					}
-					if er.Message() != tt.errMsg {
-						t.Error("error message: expected: ", tt.errMsg, "received: ", er.Message())
-					}
+					s.Assert().Equal(er.Code(), tt.errCode)
+					s.Assert().Equal(er.Message(), tt.errMsg)
 				}
 			}
+		})
+	}
+}
+
+func (s *ServerSuite) TestGetAll() {
+	tests := []struct {
+		name           string
+		expectedIDs    []string
+		expectedNames  []string
+		expectedPrices []int32
+		errCode        codes.Code
+		errMsg         string
+	}{
+		{
+			name:           "Happy",
+			expectedIDs:    []string{"1", "2", "3"},
+			expectedNames:  []string{"Donut", "Another Donut", "Another Another Donut"},
+			expectedPrices: []int32{1000, 1200, 1500},
+			errCode:        codes.OK,
+			errMsg:         "",
+		},
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			response, err := s.client.GetAll(s.ctx, nil)
+			if response != nil {
+				for i, res := range response.GetProducts() {
+					s.Assert().Equal(tt.expectedIDs[i], res.GetId())
+					s.Assert().Equal(tt.expectedNames[i], res.GetName())
+					s.Assert().Equal(tt.expectedPrices[i], res.GetPrice())
+				}
+			}
+			s.Assert().Nil(err)
+		})
+	}
+}
+
+func (s *ServerSuite) TestDelete() {
+	// if id == "500" {
+	// 	return models.ErrInternal
+	// } else if id == "404" {
+	// 	return models.ErrNotFound
+	// }
+	tests := []struct {
+		name    string
+		id      string
+		errCode codes.Code
+		errMsg  string
+	}{
+		{
+			name:    "Happy",
+			id:      "1",
+			errCode: codes.OK,
+			errMsg:  "",
+		},
+		{
+			name:    "Not Found",
+			id:      "404",
+			errCode: codes.NotFound,
+			errMsg:  models.ErrNotFound.Error(),
+		},
+		{
+			name:    "Internal",
+			id:      "500",
+			errCode: codes.Internal,
+			errMsg:  models.ErrInternal.Error(),
+		},
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			resp, err := s.client.Delete(s.ctx, &product.ID{Id: tt.id})
+			if err != nil {
+				s.Assert().Nil(resp) // gRPC возвращает nil, если произошла ошибка
+				er, _ := status.FromError(err)
+				s.Assert().Equal(er.Code(), tt.errCode)
+				s.Assert().Equal(er.Message(), tt.errMsg)
+			} else {
+				s.Assert().NotNil(resp) // gRPC возвращает не nil, если ошибки не было
+			}
+		})
+	}
+}
+
+func (s *ServerSuite) TestUpdate() {
+	tests := []struct {
+		name    string
+		id      string
+		prod    models.Product
+		errCode codes.Code
+		errMsg  string
+	}{
+		{
+			name:    "Happy",
+			id:      "1",
+			prod:    models.Product{Name: "Donut", Price: 1000, Description: "Tasty"},
+			errCode: codes.OK,
+			errMsg:  "",
+		},
+		{
+			name:    "Invalid Argument",
+			id:      "2",
+			prod:    models.Product{},
+			errCode: codes.InvalidArgument,
+			errMsg:  "name, price and description are required, price must be greater than 0",
+		},
+		{
+			name:    "Not Found",
+			id:      "404",
+			prod:    models.Product{Name: "Donut", Price: 1000, Description: "Tasty"},
+			errCode: codes.NotFound,
+			errMsg:  models.ErrNotFound.Error(),
+		},
+		{
+			name:    "Internal",
+			id:      "500",
+			prod:    models.Product{Name: "Donut", Price: 1000, Description: "Tasty"},
+			errCode: codes.Internal,
+			errMsg:  models.ErrInternal.Error(),
+		},
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			_, err := s.client.Update(s.ctx, &product.UpdateRequest{
+				Id: tt.id,
+				Product: &product.Product{
+					Name:        tt.prod.Name,
+					Price:       int32(tt.prod.Price),
+					Description: tt.prod.Description,
+				}})
+			er, _ := status.FromError(err)
+			s.Assert().Equal(tt.errCode, er.Code())
+			s.Assert().Equal(tt.errMsg, er.Message())
 		})
 	}
 }
