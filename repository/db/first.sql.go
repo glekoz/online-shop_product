@@ -36,15 +36,18 @@ func (q *Queries) Create(ctx context.Context, arg CreateParams) error {
 	return err
 }
 
-const delete = `-- name: Delete :exec
+const delete = `-- name: Delete :execrows
 DELETE
 FROM products
 WHERE id = $1
 `
 
-func (q *Queries) Delete(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, delete, id)
-	return err
+func (q *Queries) Delete(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, delete, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const get = `-- name: Get :one
@@ -98,7 +101,7 @@ func (q *Queries) GetAll(ctx context.Context) ([]GetAllRow, error) {
 }
 
 const orderedOffsetGetAll = `-- name: OrderedOffsetGetAll :many
-SELECT id, name, price
+SELECT id, name, price, description
 FROM products
 ORDER BY $1
 LIMIT $2
@@ -112,9 +115,10 @@ type OrderedOffsetGetAllParams struct {
 }
 
 type OrderedOffsetGetAllRow struct {
-	ID    string
-	Name  string
-	Price int32
+	ID          string
+	Name        string
+	Price       int32
+	Description string
 }
 
 func (q *Queries) OrderedOffsetGetAll(ctx context.Context, arg OrderedOffsetGetAllParams) ([]OrderedOffsetGetAllRow, error) {
@@ -126,7 +130,12 @@ func (q *Queries) OrderedOffsetGetAll(ctx context.Context, arg OrderedOffsetGetA
 	var items []OrderedOffsetGetAllRow
 	for rows.Next() {
 		var i OrderedOffsetGetAllRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.Price); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Price,
+			&i.Description,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -137,7 +146,7 @@ func (q *Queries) OrderedOffsetGetAll(ctx context.Context, arg OrderedOffsetGetA
 	return items, nil
 }
 
-const update = `-- name: Update :exec
+const update = `-- name: Update :execrows
 
 UPDATE products
 SET name = $2, price = $3, description = $4
@@ -154,12 +163,15 @@ type UpdateParams struct {
 // тут сначала будет Гет, потом из переданных в функцию
 // аргументов выбираются ненулевые и заменяются в структуре из Гет
 // и отправляются в БД
-func (q *Queries) Update(ctx context.Context, arg UpdateParams) error {
-	_, err := q.db.Exec(ctx, update,
+func (q *Queries) Update(ctx context.Context, arg UpdateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, update,
 		arg.ID,
 		arg.Name,
 		arg.Price,
 		arg.Description,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

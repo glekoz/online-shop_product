@@ -14,4 +14,5 @@ type Product struct {
 	Price       int32
 	Description string
 	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
 }

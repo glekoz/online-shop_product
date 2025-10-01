@@ -16,7 +16,7 @@ WHERE id = $1;
 SELECT id, name, price
 FROM products;
 
--- name: Delete :exec
+-- name: Delete :execrows
 DELETE
 FROM products
 WHERE id = $1;
@@ -25,7 +25,7 @@ WHERE id = $1;
 -- аргументов выбираются ненулевые и заменяются в структуре из Гет
 -- и отправляются в БД
 
--- name: Update :exec
+-- name: Update :execrows
 UPDATE products
 SET name = $2, price = $3, description = $4
 WHERE id = $1;
